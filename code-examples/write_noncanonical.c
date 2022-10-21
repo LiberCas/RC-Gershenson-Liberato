@@ -23,6 +23,7 @@
 
 volatile int STOP = FALSE;
 
+
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2

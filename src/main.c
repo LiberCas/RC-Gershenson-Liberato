@@ -15,6 +15,6 @@
 //   $3: filename
 int main(int argc, char *argv[])
 {
-    yofellas();
+    mopen();
     return 0;
 }

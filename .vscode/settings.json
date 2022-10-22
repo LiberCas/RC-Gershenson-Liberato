@@ -6,5 +6,12 @@
         "termios.h": "c",
         "types.h": "c",
         "applicationlayer.h": "c"
-    }
+    },
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/liberato/Documents/GitHub/RC-Gershenson-Liberato/bin",
+            "binaryPath": "/home/liberato/Documents/GitHub/RC-Gershenson-Liberato/bin/nserial",
+            "binaryArgs": []
+        }
+    ]
 }

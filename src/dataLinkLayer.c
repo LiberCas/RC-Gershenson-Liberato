@@ -9,7 +9,14 @@ extern Alarm* alr;
 
 int setPort(int door){
 	char strDoor[3];
-	itoa(door, strDoor, 10);
+	//gambiarra, corrigir depois
+	if(door == 3){
+		strDoor[0] = '3';
+	}
+	else{
+		strDoor[0] = '5';
+	}
+	//itoa(door, strDoor, 10);
 	char portPrelude[20] = "/dev/ttyS";
 	strcat(portPrelude, strDoor);
 	strcpy(ll->port, portPrelude);
@@ -108,7 +115,7 @@ int sendSFrame(FrameType type){
 int sendFrame(int size){
 	int bytes = write(al->fd, ll->frame, size);
 	if (bytes != size){
-		prinf("Couldn't write command");
+		printf("Couldn't write command");
 		return -1;
 	}
     printf("%d bytes written. Awaiting receiver response\n", bytes);

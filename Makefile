@@ -1,49 +1,37 @@
-# Makefile to build the project
-# NOTE: This file must not be changed.
+# compiler
+CCC = gcc
 
-# Parameters
-CC = gcc
-CFLAGS = -Wall
+# C++ compiler flags (-g -O2 -Wall)
+CCFLAGS = -g -O3 -Wall
 
-SRC = src/
-INCLUDE = include/
-BIN = bin/
-CABLE_DIR = cable/
+# compile flags
+LDFLAGS = -g
 
-TX_SERIAL_PORT = /dev/ttyS10
-RX_SERIAL_PORT = /dev/ttyS11
+# source files
+SRC = $(wildcard src/*.c)
 
-TX_FILE = penguin.gif
-RX_FILE = penguin-received.gif
+OBJ = $(patsubst src%, buildtemp%.o, $(SRC))
 
-# Targets
-.PHONY: all
-all: $(BIN)/main $(BIN)/cable
+OUT = bin/nserial
 
-$(BIN)/main: main.c $(SRC)/*.c
-	$(CC) $(CFLAGS) -o $@ $^ -I$(INCLUDE)
+.SUFFIXES: .c
 
-$(BIN)/cable: $(CABLE_DIR)/cable.c
-	$(CC) $(CFLAGS) -o $@ $^
+default: $(OUT)
 
-.PHONY: run_tx
-run_tx: $(BIN)/main
-	./$(BIN)/main $(TX_SERIAL_PORT) tx $(TX_FILE)
+buildtemp/%.o: src/%
+	mkdir -p buildtemp
+	$(CCC) $(INCLUDES) $(CCFLAGS) -c $< -o $@
 
-.PHONY: run_rx
-run_rx: $(BIN)/main
-	./$(BIN)/main $(RX_SERIAL_PORT) rx $(RX_FILE)
+$(OUT): $(OBJ)
+	mkdir -p bin
+	$(CCC) $(INCLUDES) $(CCFLAGS) $(OBJ) $(LIBS) -o $(OUT)
 
-.PHONY: run_cable
-run_cable: $(BIN)/cable
-	./$(BIN)/cable
-
-.PHONY: check_files
-check_files:
-	diff -s $(TX_FILE) $(RX_FILE) || exit 0
-
-.PHONY: clean
 clean:
-	rm -f $(BIN)/main
-	rm -f $(BIN)/cable
-	rm -f $(RX_FILE)
+	rm -f $(OBJ) $(OUT)
+
+test:
+	echo $(SRC)
+	echo $(OBJ)
+
+all:
+	make

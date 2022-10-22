@@ -3,6 +3,8 @@
     "files.associations": {
         "datalinklayer.h": "c",
         "time.h": "c",
-        "termios.h": "c"
+        "termios.h": "c",
+        "types.h": "c",
+        "applicationlayer.h": "c"
     }
 }

@@ -12,7 +12,10 @@
 
 #define AW 0x03
 #define AR 0x01
-#define C 0x03
+
+typedef enum {
+	C_SET = 0x03, C_DISC = 0x0B, C_UA = 0x07, C_RR = 0x05, C_REJ = 0x01, C_I = 0X00
+} ControlField;
 
 #define BAUDRATE B38400
 #define _POSIX_SOURCE 1 // POSIX compliant source
@@ -20,6 +23,7 @@
 #define FALSE 0
 #define TRUE 1
 
+#define COMMAND_FRAME_SIZE 5
 #define BUF_SIZE 256
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
@@ -28,6 +32,10 @@
 typedef enum {
 	TRANSMITTER, RECEIVER
 } LinkLayerRole;
+
+typedef enum {
+	SET, DISC, UA, RR, REJ, I
+} FrameType;
 
 typedef struct {
 	char port[20]; /*Dispositivo /dev/ttySx, x = 0, 1*/
@@ -61,6 +69,13 @@ int llclose(int showStatistics);
 int setPort(int door);
 int saveOldTio();
 int setNewTio();
-int establishConnection(LinkLayerRole role);
+int establishConnection();
+char getA();
+char getC(FrameType type);
+int initLinkLayer(int door, LinkLayerRole role);
+int sendSFrame(FrameType type);
+int sendFrame(int size);
+char* receiveFrame();
+unsigned int frameType(char* frame, FrameType type);
 
 #endif // _LINK_LAYER_H_

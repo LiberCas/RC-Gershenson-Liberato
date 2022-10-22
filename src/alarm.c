@@ -3,8 +3,7 @@
 Alarm* alr;
 
 // Alarm function handler
-void alarmHandler(int signal)
-{
+void alarmHandler(int signal){
     alr->alarmEnabled = FALSE;
     alr->alarmRang = TRUE;
     alr->alarmCount++;

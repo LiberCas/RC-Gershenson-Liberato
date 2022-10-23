@@ -8,16 +8,9 @@ extern ApplicationLayer* al;
 extern Alarm* alr;
 
 int setPort(int door){
-	char strDoor[3];
-	//gambiarra, corrigir depois
-	if(door == 3){
-		strDoor[0] = '3';
-	}
-	else{
-		strDoor[0] = '5';
-	}
-	//itoa(door, strDoor, 10);
-	char portPrelude[20] = "/dev/ttyS";
+	char strDoor[2];
+	sprintf(strDoor, "%d", door);
+	char portPrelude[20] = "/dev/pts/";
 	strcat(portPrelude, strDoor);
 	strcpy(ll->port, portPrelude);
 	return 0;
@@ -33,6 +26,7 @@ int saveOldTio(){
 }
 
 int initLinkLayer(int door, LinkLayerRole role){
+	ll = (LinkLayer*) malloc(sizeof(LinkLayer));
 	setPort(door);
 	ll->role = role;
 	ll->baudRate = BAUDRATE;
@@ -147,6 +141,7 @@ unsigned int frameType(char* frame, FrameType type){
 
 int establishConnection(){
 	int connected = 0;
+	alr = (Alarm*) malloc(sizeof(Alarm));
 	resetAlarm();
 	if (ll->role == TRANSMITTER) {
 		while (!connected) {
@@ -184,6 +179,7 @@ int establishConnection(){
 
 int llopen(int door, LinkLayerRole role) {
 	initLinkLayer(door, role);
+	al = (ApplicationLayer*) malloc(sizeof(ApplicationLayer));
 	al->fd = open(ll->port, O_RDWR | O_NOCTTY);
 	if (al->fd  < 0)
     {

@@ -6,16 +6,19 @@ ApplicationLayer* al;
 
 int mopen(){
     //Writing string
-    printf("3/5: \n");
+    /*printf("7/8: \n");
      
     unsigned char buf[3] = {0};
     fgets(buf, 3, stdin);
-   /*
-    if(buf[0] == 3){
-        int bytes = llopen(buf[0], TRANSMITTER);
+    if(buf[0] == '7'){*/
+    int bytes = llopen(7, TRANSMITTER);
+        
+    /*
+    if(buf[0] == '8'){
+        int bytes = llopen(8, RECEIVER);
     }
-    if(buf[0] == 3){
-        int bytes = llopen(buf[0], RECEIVER);
-    }*/
-    printf("2 bytes written\n");
+    else{
+        printf("%c", buf[0]);
+    }
+    printf("2 bytes written\n");*/
 }

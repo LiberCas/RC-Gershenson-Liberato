@@ -30,7 +30,7 @@ typedef enum {
 #define FALSE 0
 #define TRUE 1
 
-#define COMMAND_FRAME_SIZE 5
+#define COMMAND_FRAME_SIZE 6
 #define BUF_SIZE 256
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
@@ -82,7 +82,7 @@ char getC(FrameType type);
 int initLinkLayer(int door, LinkLayerRole role);
 int sendSFrame(FrameType type);
 int sendFrame(int size);
-char* receiveFrame();
-unsigned int frameType(char* frame, FrameType type);
+int receiveFrame();
+unsigned int frameType(FrameType type);
 
 #endif // _LINK_LAYER_H_

@@ -116,31 +116,34 @@ int sendFrame(int size){
 	return 0;
 }
 
-char* receiveFrame(){
+int receiveFrame(){
 	unsigned char temp[1] = {0};
-	unsigned char buf[BUF_SIZE + 1] = {0};
+	unsigned char buf[BUF_SIZE] = {0};
 	unsigned int i=0;
 	unsigned int stop = FALSE;
 	while (stop == FALSE){
 		read(al->fd, temp, 1);
 		buf[i] = temp[0];
-		i++;
 		if (temp[0] == '\0'){
-			buf[i] = '\0';
 			stop = TRUE;
-		}   
+		} 
+		i++;  
 	}
-	return buf;
+	if(buf[0] != '\0'){
+		strcpy(ll->frame, buf);
+		return TRUE;
+	}
+	return FALSE;
 }
 
-unsigned int frameType(char* frame, FrameType type){
-	if(frame[2] == getC(type))
-		return 1;
-	return 0;
+unsigned int frameType(FrameType type){
+	if(ll->frame[2] == getC(type))
+		return TRUE;
+	return FALSE;
 }
 
 int establishConnection(){
-	int connected = 0;
+	unsigned int connected = FALSE;
 	alr = (Alarm*) malloc(sizeof(Alarm));
 	resetAlarm();
 	if (ll->role == TRANSMITTER) {
@@ -158,7 +161,7 @@ int establishConnection(){
 				}
 			}
 
-			if (frameType(receiveFrame(), UA)) {
+			if ((receiveFrame() == TRUE) && (frameType(UA))) {
 				connected = 1;
 				printf("Connection successfully established\n");
 				return 0;
@@ -167,11 +170,10 @@ int establishConnection(){
 	}
 	if (ll->role == RECEIVER) {
 		while (!connected) {
-			if (frameType(receiveFrame(), SET)) {
+			if ((receiveFrame() == TRUE) && (frameType(SET))) {
 				sendSFrame(UA);
-				connected = 1;
-
-				printf("Connection successfully established\\n");
+				connected = TRUE;
+				printf("Connection successfully established\n");
 			}
 		}
 	}

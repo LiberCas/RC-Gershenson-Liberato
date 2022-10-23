@@ -15,7 +15,7 @@
 #define O_NOCTTY 0400
 
 #define FLAG 0x7E
-#define ESCAPE = 0x7D
+#define ESCAPE 0x7D
 
 #define AW 0x03
 #define AR 0x01
@@ -30,7 +30,7 @@ typedef enum {
 #define FALSE 0
 #define TRUE 1
 
-#define COMMAND_FRAME_SIZE 6
+#define COMMAND_FRAME_SIZE 5
 #define BUF_SIZE 256
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
@@ -84,5 +84,5 @@ int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();
 unsigned int frameType(FrameType type);
-
+int stuff(unsigned char* frame, int sz);
 #endif // _LINK_LAYER_H_

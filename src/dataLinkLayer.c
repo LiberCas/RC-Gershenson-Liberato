@@ -93,17 +93,39 @@ char getC(FrameType type){
 }
 
 int createSFrame(FrameType type){
-	memset(ll->frame, 0, BUF_SIZE);
-	ll->frame[0] = FLAG;
-	ll->frame[1] = getA();
+	unsigned char frame[COMMAND_FRAME_SIZE];
+	memset(frame, 0, COMMAND_FRAME_SIZE);
+	frame[0] = FLAG;
+	frame[1] = getA();
 	char c = getC(type);
-	ll->frame[2] = c;
+	frame[2] = c;
 	if (c == C_REJ || c == C_RR)
-		ll->frame[2] |= (ll->sequenceNumber << 7); //Ns
-	ll->frame[3] = ll->frame[1] ^ ll->frame[2]; //BCC
-	ll->frame[4] = FLAG;
-	//call stuffing function here
-	return 0;
+		frame[2] |= (ll->sequenceNumber << 7); //Ns
+	frame[3] = (frame[1] ^ frame[2]); //BCC
+	frame[4] = FLAG;
+	return stuff(frame, COMMAND_FRAME_SIZE);
+}
+
+int stuff(unsigned char* frame, int sz){
+	unsigned char stuffed[(sz * 2) - 2];
+	memset(stuffed, 0, (sz * 2) - 2);
+	unsigned int i=1;
+	unsigned int j=1;
+	stuffed[0]=FLAG;
+	while(i < (sz - 1)){
+		if((frame[i] == ESCAPE) || (frame[i] == FLAG)){
+			stuffed[j] = ESCAPE;
+			j++;
+		}
+		stuffed[j] = frame[i];
+		i++;
+		j++;
+	}
+	stuffed[j] = FLAG;
+	j++;
+	memset(ll->frame, 0, BUF_SIZE);
+	memcpy(ll->frame, stuffed, j);
+	return j;
 }
 
 int sendFrame(int size){

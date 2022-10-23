@@ -80,7 +80,7 @@ int establishConnection();
 char getA();
 char getC(FrameType type);
 int initLinkLayer(int door, LinkLayerRole role);
-int sendSFrame(FrameType type);
+int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();
 unsigned int frameType(FrameType type);

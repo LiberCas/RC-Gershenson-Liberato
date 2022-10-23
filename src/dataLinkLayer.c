@@ -92,7 +92,7 @@ char getC(FrameType type){
 	return c;
 }
 
-int sendSFrame(FrameType type){
+int createSFrame(FrameType type){
 	memset(ll->frame, 0, BUF_SIZE);
 	ll->frame[0] = FLAG;
 	ll->frame[1] = getA();
@@ -103,7 +103,7 @@ int sendSFrame(FrameType type){
 	ll->frame[3] = ll->frame[1] ^ ll->frame[2]; //BCC
 	ll->frame[4] = FLAG;
 	//call stuffing function here
-	return sendFrame(COMMAND_FRAME_SIZE);
+	return 0;
 }
 
 int sendFrame(int size){
@@ -156,7 +156,8 @@ int establishConnection(){
 					return 0;
 				}
 				else{
-					sendSFrame(SET);
+					createSFrame(SET);
+					sendFrame(COMMAND_FRAME_SIZE);
 					setAlarm(ll->timeout);
 				}
 			}
@@ -171,7 +172,8 @@ int establishConnection(){
 	if (ll->role == RECEIVER) {
 		while (!connected) {
 			if ((receiveFrame() == TRUE) && (frameType(SET))) {
-				sendSFrame(UA);
+				createSFrame(UA);
+				sendFrame(COMMAND_FRAME_SIZE);
 				connected = TRUE;
 				printf("Connection successfully established\n");
 			}

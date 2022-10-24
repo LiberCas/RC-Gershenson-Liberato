@@ -66,9 +66,6 @@ int llopen(int door, LinkLayerRole role);
 // Return number of chars written, or "-1" on error.
 int llwrite(const unsigned char* buf, int length);
 
-// Receive data in packet.
-// Return number of chars read, or "-1" on error.
-int llread(unsigned char* message);
 
 // Close previously opened connection.
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
@@ -83,7 +80,6 @@ char getA(FrameType type);
 char getC(FrameType type);
 int initLinkLayer(int door, LinkLayerRole role);
 int createSFrame(FrameType type);
-createIFrame(const unsigned char* buf, int length);
 int sendFrame(int size);
 int receiveFrame();
 unsigned int receivedFrameType(FrameType type);

@@ -185,6 +185,12 @@ int receiveFrame(){ //Also does destuffing for memory efficiency
 }
 
 unsigned int receivedFrameType(FrameType type){
+	if(type == I){
+		if(ll->received_frame[4] != FLAG){
+			return TRUE;
+		}
+		return FALSE;
+	}
 	if(ll->received_frame[2] == getC(type))
 		return TRUE;
 	return FALSE;
@@ -230,6 +236,7 @@ int establishConnection(){
 	}
 }
 
+
 int llopen(int door, LinkLayerRole role) {
 	initLinkLayer(door, role);
 	al = (ApplicationLayer*) malloc(sizeof(ApplicationLayer));
@@ -255,7 +262,7 @@ int llwrite(const unsigned char* buf, int length){
 			alr->alarmRang = FALSE;
 
 			if (alr->alarmCount >= ll->numTransmissions) {
-				printf("ERROR: Maximum number of retries exceeded. Coould not transfer file\n");
+				printf("ERROR: Maximum number of retries exceeded. Could not transfer file\n");
 				return 0;
 			}
 
@@ -271,11 +278,15 @@ int llwrite(const unsigned char* buf, int length){
 		}
 		if (receiveFrame() != 0) {
 			if (receivedFrameType(RR)) {
+				/*
 				if(receivedFrameSN() != ll->sequenceNumber){
 					continue;
 				}
 				transferring = FALSE;
 				stopAlarm();
+				*/
+				transferring = FALSE;
+				printf("Successfully sent frame\n");
 			} 
 			else if (receivedFrameType(REJ)) {
 				stopAlarm();
@@ -323,7 +334,7 @@ unsigned int llread(unsigned char** message){
 	unsigned int transferring = TRUE;
 	int sz = 0;
     while (transferring) {
-		int sz = (receiveFrame() != 0);
+		int sz = receiveFrame();
 		if ((sz != 0) && (receivedFrameType(I))) {
 			int sz = createSFrame(RR);
 			sendFrame(sz);

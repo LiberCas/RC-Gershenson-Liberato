@@ -5,17 +5,17 @@
 ApplicationLayer* al;
 
 int mopen(){
-    printf("7/8: \n");
+    printf("2/3: \n");
     unsigned char buf[3] = {0};
 
     fgets(buf, 3, stdin);
     
-    if(buf[0] == '7'){
-        int bytes = llopen(7, TRANSMITTER);
+    if(buf[0] == '2'){
+        int bytes = llopen(2, TRANSMITTER);
     }
     
-    if(buf[0] == '8'){
-        int bytes = llopen(8, RECEIVER);
+    if(buf[0] == '3'){
+        int bytes = llopen(3, RECEIVER);
     }
     else{
         printf("%c", buf[0]);

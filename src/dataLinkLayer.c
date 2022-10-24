@@ -138,24 +138,42 @@ int sendFrame(int size){
 	return 0;
 }
 
-int receiveFrame(){
+int receiveFrame(){ //Also does destuffing for memory efficiency
 	unsigned char temp[1] = {0};
-	unsigned char buf[BUF_SIZE] = {0};
+	memset(ll->frame, 0, BUF_SIZE);
 	unsigned int i=0;
 	unsigned int stop = FALSE;
+	unsigned int escaped = FALSE;
+	unsigned int readSmth = FALSE;
 	while (stop == FALSE){
-		read(al->fd, temp, 1);
-		buf[i] = temp[0];
-		if (temp[0] == '\0'){
-			stop = TRUE;
-		} 
-		i++;  
+		readSmth = read(al->fd, temp, 1);
+		if(i == 0 && readSmth == 0){
+			return 0;
+		}
+		if(temp[0] == FLAG){
+			if(i == 0){
+				//do nothing
+			}
+			else if(escaped){
+				escaped = FALSE;
+			}
+			else{
+				stop = TRUE;
+			}
+		}
+		if(temp[0] == ESCAPE){
+			if(escaped){
+				escaped = FALSE;
+			}
+			else{
+				continue;
+			}
+		}
+		ll->frame[i]=temp[0];
+		i++;
 	}
-	if(buf[0] != '\0'){
-		strcpy(ll->frame, buf);
-		return TRUE;
-	}
-	return FALSE;
+	printf("%s", ll->frame);
+	return i;
 }
 
 unsigned int frameType(FrameType type){
@@ -178,14 +196,14 @@ int establishConnection(){
 					return 0;
 				}
 				else{
-					createSFrame(SET);
-					sendFrame(COMMAND_FRAME_SIZE);
+					int sz = createSFrame(SET);
+					sendFrame(sz);
 					setAlarm(ll->timeout);
 				}
 			}
 
-			if ((receiveFrame() == TRUE) && (frameType(UA))) {
-				connected = 1;
+			if ((receiveFrame() != 0) && (frameType(UA))) {
+				connected = TRUE;
 				printf("Connection successfully established\n");
 				return 0;
 			}
@@ -193,9 +211,9 @@ int establishConnection(){
 	}
 	if (ll->role == RECEIVER) {
 		while (!connected) {
-			if ((receiveFrame() == TRUE) && (frameType(SET))) {
-				createSFrame(UA);
-				sendFrame(COMMAND_FRAME_SIZE);
+			if ((receiveFrame() != 0) && (frameType(SET))) {
+				int sz = createSFrame(UA);
+				sendFrame(sz);
 				connected = TRUE;
 				printf("Connection successfully established\n");
 			}

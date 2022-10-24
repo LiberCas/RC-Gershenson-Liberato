@@ -31,10 +31,11 @@ typedef enum {
 #define TRUE 1
 
 #define COMMAND_FRAME_SIZE 5
-#define BUF_SIZE 256
-// SIZE of maximum acceptable payload.
-// Maximum number of bytes that application layer should send to link layer
-#define MAX_PAYLOAD_SIZE 1000
+#define I_FRAME_SIZE 6
+#define MAX_UNSTUFFED_SIZE 129 
+#define MAX_SEND_SIZE 123 //MAX_UNSTUFFED_SIZE - Header(FLAG + A + C + BCC1) - Footer(BCC2 + FLAG)
+#define MAX_STUFFED_SIZE 256 //MAX_UNSTUFFED_SIZE - 2(Start and end flag, that can never be escaped)) * 2(Excepting the start and end flags all 
+// other chars may be stuffed, doubling their size) + 2(Putting the start and end flags back in = ((129 - 2)*2)+2 = (127*2) + 2 = 254 +2 = 256
 
 typedef enum {
 	TRANSMITTER, RECEIVER
@@ -51,7 +52,8 @@ typedef struct {
 	unsigned int sequenceNumber; /*Número de sequência da trama: 0, 1*/
 	unsigned int timeout; /*Valor do temporizador: 1 s*/
 	unsigned int numTransmissions; /*Número de tentativas em caso de falha*/
-	char frame[BUF_SIZE]; /*Trama*/
+	char sent_frame[MAX_STUFFED_SIZE]; /*Trama*/
+	char received_frame[MAX_STUFFED_SIZE];
 	struct termios oldtio, newtio;
 } LinkLayer;
 
@@ -77,12 +79,17 @@ int setPort(int door);
 int saveOldTio();
 int setNewTio();
 int establishConnection();
-char getA();
+char getA(FrameType type);
 char getC(FrameType type);
 int initLinkLayer(int door, LinkLayerRole role);
 int createSFrame(FrameType type);
+createIFrame(const unsigned char* buf, int length);
 int sendFrame(int size);
 int receiveFrame();
-unsigned int frameType(FrameType type);
+unsigned int receivedFrameType(FrameType type);
+unsigned int createIFrame(const unsigned char* buf, int length);
+unsigned int receivedFrameSN();
+unsigned char makeBCC2(const unsigned char* buf, int size);
 int stuff(unsigned char* frame, int sz);
+unsigned int llread(unsigned char** message);
 #endif // _LINK_LAYER_H_

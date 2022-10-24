@@ -33,7 +33,8 @@ int initLinkLayer(int door, LinkLayerRole role){
 	ll->sequenceNumber = 0;
 	ll->timeout = 3;
 	ll->numTransmissions = 3;
-	memset(ll->frame, 0, BUF_SIZE);
+	memset(ll->sent_frame, 0, MAX_STUFFED_SIZE);
+	memset(ll->received_frame, 0, MAX_STUFFED_SIZE);
 	return 0;
 }
 
@@ -64,10 +65,17 @@ int setNewTio(){
 	return 0;
 }
 
-char getA(){
-	if(ll->role == TRANSMITTER)
-		return AW;
-	return AR;
+char getA(FrameType type){
+	if(ll->role == TRANSMITTER){
+		if((type == I) || (type == SET) || (type == DISC)){
+			return AW;
+		}
+		return AR;
+	}
+	if((type == I) || (type == SET) || (type == DISC)){
+		return AR;
+	}
+	return AW;
 }
 
 char getC(FrameType type){
@@ -96,7 +104,7 @@ int createSFrame(FrameType type){
 	unsigned char frame[COMMAND_FRAME_SIZE];
 	memset(frame, 0, COMMAND_FRAME_SIZE);
 	frame[0] = FLAG;
-	frame[1] = getA();
+	frame[1] = getA(type);
 	char c = getC(type);
 	frame[2] = c;
 	if (c == C_REJ || c == C_RR)
@@ -123,13 +131,13 @@ int stuff(unsigned char* frame, int sz){
 	}
 	stuffed[j] = FLAG;
 	j++;
-	memset(ll->frame, 0, BUF_SIZE);
-	memcpy(ll->frame, stuffed, j);
+	memset(ll->sent_frame, 0, MAX_STUFFED_SIZE);
+	memcpy(ll->sent_frame, stuffed, j);
 	return j;
 }
 
 int sendFrame(int size){
-	int bytes = write(al->fd, ll->frame, size);
+	int bytes = write(al->fd, ll->sent_frame, size);
 	if (bytes != size){
 		printf("Couldn't write command");
 		return -1;
@@ -140,7 +148,7 @@ int sendFrame(int size){
 
 int receiveFrame(){ //Also does destuffing for memory efficiency
 	unsigned char temp[1] = {0};
-	memset(ll->frame, 0, BUF_SIZE);
+	memset(ll->received_frame, 0, MAX_STUFFED_SIZE);
 	unsigned int i=0;
 	unsigned int stop = FALSE;
 	unsigned int escaped = FALSE;
@@ -169,15 +177,15 @@ int receiveFrame(){ //Also does destuffing for memory efficiency
 				continue;
 			}
 		}
-		ll->frame[i]=temp[0];
+		ll->received_frame[i]=temp[0];
 		i++;
 	}
-	printf("%s", ll->frame);
+	printf("%s", ll->received_frame);
 	return i;
 }
 
-unsigned int frameType(FrameType type){
-	if(ll->frame[2] == getC(type))
+unsigned int receivedFrameType(FrameType type){
+	if(ll->received_frame[2] == getC(type))
 		return TRUE;
 	return FALSE;
 }
@@ -189,7 +197,7 @@ int establishConnection(){
 	if (ll->role == TRANSMITTER) {
 		while (!connected) {
 			if (alr->alarmRang || alr->alarmCount == 0) {
-				alr->alarmRang = 0;
+				alr->alarmRang = FALSE;
 
 				if (alr->alarmCount >= ll->numTransmissions) {
 					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
@@ -202,8 +210,9 @@ int establishConnection(){
 				}
 			}
 
-			if ((receiveFrame() != 0) && (frameType(UA))) {
+			if ((receiveFrame() != 0) && (receivedFrameType(UA))) {
 				connected = TRUE;
+				stopAlarm();
 				printf("Connection successfully established\n");
 				return 0;
 			}
@@ -211,7 +220,7 @@ int establishConnection(){
 	}
 	if (ll->role == RECEIVER) {
 		while (!connected) {
-			if ((receiveFrame() != 0) && (frameType(SET))) {
+			if ((receiveFrame() != 0) && (receivedFrameType(SET))) {
 				int sz = createSFrame(UA);
 				sendFrame(sz);
 				connected = TRUE;
@@ -238,11 +247,92 @@ int llopen(int door, LinkLayerRole role) {
 
 
 int llwrite(const unsigned char* buf, int length){
-    return 0;
+	unsigned int transferring = TRUE;
+	unsigned int newframe = TRUE;
+	resetAlarm();
+	while (transferring) {
+		if (alr->alarmRang || alr->alarmCount == 0) {
+			alr->alarmRang = FALSE;
+
+			if (alr->alarmCount >= ll->numTransmissions) {
+				printf("ERROR: Maximum number of retries exceeded. Coould not transfer file\n");
+				return 0;
+			}
+
+			else{
+				int sz;
+				if(newframe){
+					sz = createIFrame(buf, length);
+					newframe = FALSE;
+				}
+				sendFrame(sz);
+				setAlarm(ll->timeout);
+			}
+		}
+		if (receiveFrame() != 0) {
+			if (receivedFrameType(RR)) {
+				if(receivedFrameSN() != ll->sequenceNumber){
+					continue;
+				}
+				transferring = FALSE;
+				stopAlarm();
+			} 
+			else if (receivedFrameType(REJ)) {
+				stopAlarm();
+				alr->alarmCount = 0;
+			}
+		}
+	}
+	stopAlarm();
+	return 1;
 }
 
-int llread(unsigned char* message){
-    return 0;
+unsigned int createIFrame(const unsigned char* buf, int length){
+	ll->sequenceNumber++;
+	if(ll->sequenceNumber == 2){
+		ll->sequenceNumber = 0;
+	}
+	unsigned char frame[length+I_FRAME_SIZE];
+	memset(frame, 0, length);
+	frame[0] = FLAG;
+	frame[1] = getA(I);
+	frame[2] = (ll->sequenceNumber << 6); //Ns
+	frame[3] = (frame[1] ^ frame[2]); //BCC1
+	int i;
+	for(i=0; i<length; i++){
+		frame[i+4] = buf[i];
+	}
+	frame[i+4] = makeBCC2(buf, length);
+	frame[i+5] = FLAG;
+	return stuff(frame, length+I_FRAME_SIZE);
+}
+
+unsigned int receivedFrameSN(){
+	return(ll->received_frame[2]>>7);
+}
+
+unsigned char makeBCC2(const unsigned char* buf, int size) {
+	unsigned char bcc = 0;
+	for (int i = 0; i < size; i++){
+		bcc ^= buf[i];
+	}
+	return bcc;
+}
+
+unsigned int llread(unsigned char** message){
+	unsigned int transferring = TRUE;
+	int sz = 0;
+    while (transferring) {
+		int sz = (receiveFrame() != 0);
+		if ((sz != 0) && (receivedFrameType(I))) {
+			int sz = createSFrame(RR);
+			sendFrame(sz);
+			transferring = FALSE;
+			printf("Frame received\n");
+		}
+	}
+	memcpy(message, ll->received_frame, sz);
+	return(sz);
 }
 
 int llclose(int showStatistics){

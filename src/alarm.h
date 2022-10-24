@@ -17,5 +17,5 @@ typedef struct {
 void alarmHandler(int signal);
 void resetAlarm();
 int setAlarm(int time);
-
+void stopAlarm();
 #endif 

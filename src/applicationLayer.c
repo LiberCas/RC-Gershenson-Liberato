@@ -11,11 +11,16 @@ int mopen(){
     fgets(buf, 3, stdin);
     
     if(buf[0] == '2'){
-        int bytes = llopen(2, TRANSMITTER);
+        int fd = llopen(2, TRANSMITTER);
+        char buf2[20] = "hello world";
+        llwrite(buf2, 11);
     }
     
     if(buf[0] == '3'){
         int bytes = llopen(3, RECEIVER);
+        char buf3[20];
+        llread(&buf3);
+        printf("%s", buf3);
     }
     else{
         printf("%c", buf[0]);

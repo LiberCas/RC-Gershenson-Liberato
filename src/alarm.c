@@ -24,3 +24,12 @@ int setAlarm(int time){
         }
     return 0;
 }
+
+void stopAlarm() {
+	struct sigaction action;
+	action.sa_handler = NULL;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+	sigaction(SIGALRM, &action, NULL);
+	alarm(0);
+}

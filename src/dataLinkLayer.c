@@ -225,7 +225,7 @@ FrameType receivedFrameType()
 	case C_RR:
 		t = RR;
 		break;
-	case C_RR1:
+	case '\205':
 		t = RR;
 		break;
 	case C_REJ1:
@@ -341,10 +341,11 @@ int llwrite(const unsigned char *buf, int length)
 		{
 			if (receivedFrameType() == RR)
 			{
+				/*
 				if (receivedSFrameSN() != ll->sequenceNumber)
 				{
 					continue;
-				}
+				}*/
 				transferring = FALSE;
 				printf("Successfully sent frame\n");
 			}

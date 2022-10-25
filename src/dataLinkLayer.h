@@ -21,7 +21,7 @@
 #define AR 0x01
 
 typedef enum {
-	C_SET = 0x03, C_DISC = 0x0B, C_UA = 0x07, C_RR = 0x05, C_REJ = 0x01, C_I = 0X00
+	C_SET = 0x03, C_DISC = 0x0B, C_UA = 0x07, C_RR = 0x05, C_REJ = 0x01, C_I0 = 0x00, C_I1 = 0x40, C_RR1 = '\205', C_REJ1 = 0x81
 } ControlField;
 
 #define BAUDRATE B38400
@@ -42,7 +42,7 @@ typedef enum {
 } LinkLayerRole;
 
 typedef enum {
-	SET, DISC, UA, RR, REJ, I
+	SET, DISC, UA, RR, REJ, I, U
 } FrameType;
 
 typedef struct {
@@ -76,16 +76,19 @@ int setPort(int door);
 int saveOldTio();
 int setNewTio();
 int establishConnection();
-char getA(FrameType type);
 char getC(FrameType type);
+char getA(FrameType type, unsigned int analysingMessage);
 int initLinkLayer(int door, LinkLayerRole role);
 int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();
-unsigned int receivedFrameType(FrameType type);
+FrameType receivedFrameType();
 unsigned int createIFrame(const unsigned char* buf, int length);
-unsigned int receivedFrameSN();
+unsigned int receivedSFrameSN();
 unsigned char makeBCC2(const unsigned char* buf, int size);
 int stuff(unsigned char* frame, int sz);
+unsigned int receivedIFrameSN();
+unsigned int analyzeReceivedFrame(const unsigned int sz);
 unsigned int llread(unsigned char** message);
+
 #endif // _LINK_LAYER_H_

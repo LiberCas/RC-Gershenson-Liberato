@@ -5,20 +5,20 @@
 ApplicationLayer* al;
 
 int mopen(){
-    printf("2/3: \n");
+    printf("7/8: \n");
     unsigned char buf[3] = {0};
 
     fgets(buf, 3, stdin);
     
-    if(buf[0] == '2'){
-        int fd = llopen(2, TRANSMITTER);
+    if(buf[0] == '7'){
+        int fd = llopen(7, TRANSMITTER);
         char buf2[20] = "hello world";
         llwrite(buf2, 11);
     }
     
-    if(buf[0] == '3'){
-        int bytes = llopen(3, RECEIVER);
-        char buf3[20];
+    if(buf[0] == '8'){
+        int bytes = llopen(8, RECEIVER);
+        char buf3 = malloc(20);
         llread(&buf3);
         printf("%s", buf3);
     }

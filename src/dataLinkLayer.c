@@ -79,7 +79,7 @@ char getA(FrameType type){
 }
 
 char getC(FrameType type){
-	char c;
+	char c = 0;
 	switch (type){
 	case SET:
 		c = C_SET;
@@ -184,16 +184,30 @@ int receiveFrame(){ //Also does destuffing for memory efficiency
 	return i;
 }
 
-unsigned int receivedFrameType(FrameType type){
-	if(type == I){
-		if(ll->received_frame[4] != FLAG){
-			return TRUE;
-		}
-		return FALSE;
+FrameType getReceivedFrameType(){
+	FrameType t = U;
+	switch (ll->received_frame[2]){
+	case C_SET:
+		t = SET;
+		break;
+	case C_DISC:
+		t = DISC;
+		break;
+	case C_UA:
+		t = UA;
+		break;
+	case C_RR:
+		t = RR;
+		break;
+	case C_REJ:
+		t = REJ;
+		break;
+	case C_I0:
+		t = I;
+	case  C_I1:
+		t = I;
 	}
-	if(ll->received_frame[2] == getC(type))
-		return TRUE;
-	return FALSE;
+	return t;
 }
 
 int establishConnection(){
@@ -216,7 +230,7 @@ int establishConnection(){
 				}
 			}
 
-			if ((receiveFrame() != 0) && (receivedFrameType(UA))) {
+			if ((receiveFrame() != 0) && (getReceivedFrameType == UA)) {
 				connected = TRUE;
 				stopAlarm();
 				printf("Connection successfully established\n");
@@ -226,7 +240,7 @@ int establishConnection(){
 	}
 	if (ll->role == RECEIVER) {
 		while (!connected) {
-			if ((receiveFrame() != 0) && (receivedFrameType(SET))) {
+			if ((receiveFrame() != 0) && (getReceivedFrameType == SET)) {
 				int sz = createSFrame(UA);
 				sendFrame(sz);
 				connected = TRUE;
@@ -277,7 +291,7 @@ int llwrite(const unsigned char* buf, int length){
 			}
 		}
 		if (receiveFrame() != 0) {
-			if (receivedFrameType(RR)) {
+			if (getReceivedFrameType == RR) {
 				/*
 				if(receivedFrameSN() != ll->sequenceNumber){
 					continue;
@@ -288,7 +302,7 @@ int llwrite(const unsigned char* buf, int length){
 				transferring = FALSE;
 				printf("Successfully sent frame\n");
 			} 
-			else if (receivedFrameType(REJ)) {
+			else if (getReceivedFrameType == REJ) {
 				stopAlarm();
 				alr->alarmCount = 0;
 			}
@@ -304,7 +318,7 @@ unsigned int createIFrame(const unsigned char* buf, int length){
 		ll->sequenceNumber = 0;
 	}
 	unsigned char frame[length+I_FRAME_SIZE];
-	memset(frame, 0, length);
+	memset(frame, 0, length+I_FRAME_SIZE);
 	frame[0] = FLAG;
 	frame[1] = getA(I);
 	frame[2] = (ll->sequenceNumber << 6); //Ns
@@ -334,16 +348,43 @@ unsigned int llread(unsigned char** message){
 	unsigned int transferring = TRUE;
 	int sz = 0;
     while (transferring) {
-		int sz = receiveFrame();
-		if ((sz != 0) && (receivedFrameType(I))) {
-			int sz = createSFrame(RR);
-			sendFrame(sz);
-			transferring = FALSE;
-			printf("Frame received\n");
+		sz = receiveFrame();
+		if (sz != 0) {
+			int success = analyzeReceivedFrame(sz);
+			int sz2;
+			if(success = TRUE){
+				sz2 = createSFrame(RR);
+				transferring = FALSE;
+				printf("Frame received\n");
+			}
+			else{
+				sz2 = createSFrame(REJ);
+				printf("Frame received with errors, awaiting resend\n");
+			}
+			sendFrame(sz2);
 		}
 	}
-	memcpy(message, ll->received_frame, sz);
+	memcpy(message, ll->received_frame[4], sz-2);
 	return(sz);
+}
+
+unsigned int analyzeReceivedFrame(unsigned int sz){
+	if((ll->received_frame[0] != FLAG) || (ll->received_frame[sz-1] != FLAG)){ //FLAG error
+		return FALSE;
+	}
+	if(getReceivedFrameType() == U){ //Frame type error
+		return FALSE;
+	}
+	if(ll->received_frame[1] != getA(getReceivedFrameType())){ //A error
+		return FALSE;
+	}
+	if(ll->received_frame[3] != (ll->received_frame[1] ^ ll->received_frame[2])){ //BCC1 error
+		return FALSE;
+	}
+	if((getReceivedFrameType() == I) && (makeBCC2(ll->received_frame[4], sz) != (ll->received_frame[sz-2]))){ //BCC2 error
+		return FALSE;
+	}
+	return TRUE;
 }
 
 int llclose(int showStatistics){

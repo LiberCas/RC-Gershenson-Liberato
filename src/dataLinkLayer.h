@@ -21,7 +21,7 @@
 #define AR 0x01
 
 typedef enum {
-	C_SET = 0x03, C_DISC = 0x0B, C_UA = 0x07, C_RR = 0x05, C_REJ = 0x01, C_I0 = 0x00, C_I1 = 0x40
+	C_SET = 0x03, C_DISC = 0x0B, C_UA = 0x07, C_RR = 0x05, C_REJ = 0x01, C_I0 = 0x00, C_I1 = 0x40, C_RR1 = 0x85, C_REJ1 = 0x81
 } ControlField;
 
 #define BAUDRATE B38400
@@ -52,8 +52,8 @@ typedef struct {
 	unsigned int sequenceNumber; /*Número de sequência da trama: 0, 1*/
 	unsigned int timeout; /*Valor do temporizador: 1 s*/
 	unsigned int numTransmissions; /*Número de tentativas em caso de falha*/
-	char sent_frame[MAX_STUFFED_SIZE]; /*Trama*/
-	char received_frame[MAX_STUFFED_SIZE];
+	unsigned char sent_frame[MAX_STUFFED_SIZE]; /*Trama*/
+	unsigned char received_frame[MAX_STUFFED_SIZE];
 	struct termios oldtio, newtio;
 } LinkLayer;
 
@@ -76,17 +76,19 @@ int setPort(int door);
 int saveOldTio();
 int setNewTio();
 int establishConnection();
-char getA(FrameType type);
 char getC(FrameType type);
+char getA(FrameType type, unsigned int analysingMessage);
 int initLinkLayer(int door, LinkLayerRole role);
 int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();
-FrameType getReceivedFrameType();
+FrameType receivedFrameType();
 unsigned int createIFrame(const unsigned char* buf, int length);
-unsigned int receivedFrameSN();
+unsigned int receivedSFrameSN();
 unsigned char makeBCC2(const unsigned char* buf, int size);
 int stuff(unsigned char* frame, int sz);
-unsigned int llread(unsigned char** message);
-unsigned int analyzeReceivedFrame(unsigned int sz)
+unsigned int receivedIFrameSN();
+unsigned int analyzeReceivedFrame(const unsigned int sz);
+unsigned int llread(unsigned char* message);
+
 #endif // _LINK_LAYER_H_

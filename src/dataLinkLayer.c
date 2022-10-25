@@ -8,7 +8,7 @@ extern Alarm *alr;
 
 int setPort(int door)
 {
-	char strDoor[2];
+	char strDoor[3];
 	sprintf(strDoor, "%d", door);
 	char portPrelude[20] = "/dev/pts/";
 	strcat(portPrelude, strDoor);
@@ -225,7 +225,7 @@ FrameType receivedFrameType()
 	case C_RR:
 		t = RR;
 		break;
-	case '\205':
+	case C_RR1:
 		t = RR;
 		break;
 	case C_REJ1:
@@ -341,11 +341,10 @@ int llwrite(const unsigned char *buf, int length)
 		{
 			if (receivedFrameType() == RR)
 			{
-				/*
 				if (receivedSFrameSN() != ll->sequenceNumber)
 				{
 					continue;
-				}*/
+				}
 				transferring = FALSE;
 				printf("Successfully sent frame\n");
 			}
@@ -406,22 +405,21 @@ unsigned char makeBCC2(const unsigned char *buf, int size)
 	return bcc;
 }
 
-unsigned int llread(unsigned char **message)
+unsigned int llread(unsigned char *message)
 {
 	unsigned int transferring = TRUE;
-	int receivedSize; // MEM LEAK
+	int receivedSize;
 	while (transferring)
 	{
-		int receivedSize = receiveFrame();
+		receivedSize = receiveFrame();
 		if (receivedSize != 0)
 		{
-			int success = analyzeReceivedFrame(receivedSize);
-			int sendSize = 0;
-			if (receivedFrameType() == SET)
+			if (receivedFrameType() == SET) //Getting old sets
 			{
 				continue;
-				// leve gambiarra pra ver se vai
 			}
+			int success = analyzeReceivedFrame(receivedSize);
+			int sendSize = 0;
 			if (success == TRUE)
 			{
 				if (receivedIFrameSN() == ll->sequenceNumber)
@@ -444,7 +442,7 @@ unsigned int llread(unsigned char **message)
 			sendFrame(sendSize);
 		}
 	}
-	memcpy(*message, ll->received_frame, receivedSize);
+	memcpy(message, ll->received_frame+4, receivedSize - I_FRAME_SIZE);
 	return (receivedSize);
 }
 

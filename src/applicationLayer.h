@@ -11,6 +11,10 @@ typedef enum {
 	C_DATA = 0x01, C_START = 0x02, C_END = 0x03
 } ControlFieldPackage;
 
+typedef enum {
+	T_SIZE, T_NAME
+} TPackage;
+
 typedef struct  {
     int fd; /*Descritor correspondente à porta série*/
     LinkLayerRole role;
@@ -32,5 +36,7 @@ int sendFileLoop();
 int receiveFileLoop();
 long int getFileSize(FILE* file);
 int sendDataPackage(int n, const char* buffer, int length);
+int sendControlPackage(ControlFieldPackage c, char *fileSizStr);
+int receiveControlPackage(int * type, int * size);
 
 #endif // _APPLICATION_LAYER_H_

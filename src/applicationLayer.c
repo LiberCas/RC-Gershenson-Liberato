@@ -57,10 +57,9 @@ int sendFileLoop(){
 	char fileSizeString[sizeof(int) * 3 + 2];
 	snprintf(fileSizeString, sizeof fileSizeString, "%d", fileSize);
 
-    /*
-	if (!sendControlPackage(al->fd, CTRL_PKG_START, fileSizeString, al->filename))
-		return 0;
-    */
+    
+	if (sendControlPackage(C_START, fileSizeString) != 0)
+		return 1;
 
 	char* fileBuf = malloc(MAX_DATA_SIZE+1);
     memset(fileBuf, 0, MAX_DATA_SIZE+1);
@@ -86,11 +85,46 @@ int sendFileLoop(){
 		return 1;
 	}
 
-    /*
-	if (!sendControlPackage(al->fd, CTRL_PKG_END, "0", ""))
-		return 0;*/
+	if (sendControlPackage(C_END, "0") != 0)
+		return 1;
 
 	printf("\nFile successfully transferred.\n");
+	return 0;
+}
+
+int sendControlPackage(ControlFieldPackage c, char *fileSizStr){
+	int packageSize = 5 + strlen(fileSizStr) + strlen(al->filename);
+    if(packageSize > MAX_PACKAGE_SIZE){
+        printf("ERROR: Package dimensions too big.\n");
+		return 1;
+    }
+
+	unsigned int i = 0, pos = 0;
+
+	unsigned char* controlPackage = (unsigned char*) malloc (packageSize);
+    memset(controlPackage, 0, packageSize);
+    
+	controlPackage[pos++] = c;
+	controlPackage[pos++] = T_SIZE;
+	controlPackage[pos++] = strlen(fileSizStr);
+	for (i = 0; i < strlen(fileSizStr); i++){
+        controlPackage[pos++] = fileSizStr[i];
+    }
+	controlPackage[pos++] = T_NAME;
+	controlPackage[pos++] = strlen(al->filename);
+	for (i = 0; i < strlen(al->filename); i++){
+		controlPackage[pos++] = al->filename[i];
+    }
+	if(c == C_START) {
+		printf("\nFile: %s\n", al->filename);
+		printf("Size: %s (bytes)\n", fileSizStr);
+	}
+
+	if (llwrite(controlPackage, packageSize) != 0) {
+		printf("ERROR: Could not write to link layer while sending control package.\n");
+		free(controlPackage);
+		return 1;
+	}
 	return 0;
 }
 
@@ -123,19 +157,18 @@ int sendDataPackage(int n, const char* buffer, int length) {
 
 
 int receiveFileLoop(){
-    int controlStart, fileSize=946;
+    int controlStart, fileSize;
 	char* fileName;
 
-    /*
-	if (!receiveControlPackage(al->fd, &controlStart, &fileSize, &fileName))
-		return 0;
-
-	if (controlStart != CTRL_PKG_START) {
-		printf(
-				"ERROR: Control package received but its control field - %d - is not C_PKG_START",
-				controlStart);
-		return 0;
-	}*/
+	if (receiveControlPackage(&controlStart, &fileSize) != 0){
+        printf("ERROR: Could not receive START control package");
+        return 1;
+    }
+		
+	if (controlStart != C_START) {
+		printf("ERROR: Control package received but its control field - %d - is not C_PKG_START", controlStart);
+		return 1;
+	}
 
 	FILE* outputFile = fopen(al->filename, "wb");
 	if (outputFile == NULL) {
@@ -145,12 +178,11 @@ int receiveFileLoop(){
 
 
 	printf("Created output file: %s\n", al->filename);
-    /*
-	printf("Expected file size: %d (bytes)\n", fileSize);*/
+	printf("Expected file size: %d (bytes)\n", fileSize);
     unsigned int size;
     int fail = 0, N = -1;;
     int lastN = N;
-	int fileSizeReadSoFar = 0;// N = -1;
+	int fileSizeReadSoFar = 0;
     unsigned char* fileBuf = (unsigned char*) malloc(MAX_DATA_SIZE+1);
     memset(fileBuf, 0, MAX_DATA_SIZE+1);
     
@@ -179,20 +211,55 @@ int receiveFileLoop(){
 		return 1;
 	}
 
-/*
 	int controlPackageTypeReceived = -1;
-	if (!receiveControlPackage(al->fd, &controlPackageTypeReceived, 0, NULL)) {
+	if (receiveControlPackage(&controlPackageTypeReceived, &fileSize) != 0) {
 		printf("ERROR: Could not receive END control package.\n");
-		return 0;
+		return 1;
 	}
 
-	if (controlPackageTypeReceived != CTRL_PKG_END) {
-		printf("ERROR: Control field received (%d) is not END.\n",
-				controlPackageTypeReceived);
-		return 0;
-	}*/
+	if (controlPackageTypeReceived != C_END) {
+		printf("ERROR: Control field received (%d) is not END.\n", controlPackageTypeReceived);
+		return 1;
+	}
 
 	printf("File successfully received.\n");
+	return 0;
+}
+
+int receiveControlPackage(int * type, int * size){
+	unsigned char* package = (unsigned char*) malloc(MAX_PACKAGE_SIZE+1);
+    memset(package, 0, MAX_PACKAGE_SIZE+1);
+
+	unsigned int totalSize = llread(package);
+	if (totalSize <= 0) {
+		printf("ERROR: Could not read from link layer while receiving control package.\n");
+		return 1;
+	}
+
+	*type = package[0];
+    int paramType=0;
+	unsigned int i = 0, numParams = 2, pos = 1, numOcts = 0;
+
+	for (i = 0; i < numParams; i++) {
+		paramType = package[pos++];
+		switch (paramType) {
+		case T_SIZE: {
+			numOcts = (unsigned int) package[pos++];
+
+			char* length = malloc(numOcts);
+			memcpy(length, &package[pos], numOcts);
+			pos += numOcts;
+			*size = atoi(length);
+			free(length);
+			break;
+		}
+		case T_NAME:
+			numOcts = (unsigned char) package[pos++];
+            memset(al->filename, 0, MAX_FILE_NAME);
+			memcpy(al->filename, &package[pos], numOcts);
+			break;
+		}
+	}
 	return 0;
 }
 

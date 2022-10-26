@@ -247,8 +247,7 @@ int establishConnection()
 	unsigned int connected = FALSE;
 	alr = (Alarm *)malloc(sizeof(Alarm));
 	resetAlarm();
-	if (ll->role == TRANSMITTER)
-	{
+	if (ll->role == TRANSMITTER){
 		while (!connected)
 		{
 			if (alr->alarmRang || alr->alarmCount == 0)
@@ -257,6 +256,7 @@ int establishConnection()
 
 				if (alr->alarmCount >= ll->numTransmissions)
 				{
+					stopAlarm();
 					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
 					return 0;
 				}
@@ -273,7 +273,7 @@ int establishConnection()
 				connected = TRUE;
 				stopAlarm();
 				printf("Connection successfully established\n");
-				return 0;
+				return 1;
 			}
 		}
 	}
@@ -285,11 +285,28 @@ int establishConnection()
 			{
 				int sz = createSFrame(UA);
 				sendFrame(sz);
+				stopAlarm();
 				connected = TRUE;
 				printf("Connection successfully established\n");
+				return 1;
+			}
+			if (alr->alarmRang || alr->alarmCount == 0) {
+				alr->alarmRang = FALSE;
+
+				if (alr->alarmCount >= ll->numTransmissions)
+				{
+					stopAlarm();
+					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
+					return 0;
+				}
+				else
+				{
+					setAlarm(ll->timeout);
+				}
 			}
 		}
 	}
+	return 1;
 }
 
 int llopen(int door, LinkLayerRole role)
@@ -304,8 +321,11 @@ int llopen(int door, LinkLayerRole role)
 	}
 	saveOldTio();
 	setNewTio();
-	establishConnection();
-	return al->fd;
+	int success = establishConnection();
+	if(success == 1){
+		return al->fd;
+	}
+	return 0;
 }
 
 int llwrite(const unsigned char *buf, int length)
@@ -321,6 +341,7 @@ int llwrite(const unsigned char *buf, int length)
 
 			if (alr->alarmCount >= ll->numTransmissions)
 			{
+				stopAlarm();
 				printf("ERROR: Maximum number of retries exceeded. Could not transfer file\n");
 				return 0;
 			}
@@ -474,7 +495,91 @@ unsigned int analyzeReceivedFrame(const unsigned int sz)
 	return TRUE;
 }
 
-int llclose(int showStatistics)
-{
-	return 0;
+int llclose() {
+	printf("Attempting to terminate connection\n");
+	unsigned int connected = TRUE;
+	unsigned int success = FALSE;
+	resetAlarm();
+
+	if (ll->role == TRANSMITTER) {
+		while (connected) {
+			if (alr->alarmRang || alr->alarmCount == 0) {
+
+				alr->alarmRang = FALSE;
+
+				if (alr->alarmCount >= ll->numTransmissions) {
+					stopAlarm();
+					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
+					connected = FALSE;
+					success = FALSE;
+				}
+				else{
+					int sz = createSFrame(DISC);
+					sendFrame(sz);
+					setAlarm(ll->timeout);
+				}
+			}
+			if ((receiveFrame() != 0) && (receivedFrameType() == DISC)) {
+				stopAlarm();
+				int sz = createSFrame(UA);
+				sendFrame(sz);
+				printf("Connection terminated\n");
+				connected = FALSE;
+				success = TRUE;
+			}
+		}
+	}
+	if (ll->role == RECEIVER) {
+		while (connected){
+			if (alr->alarmRang || alr->alarmCount == 0) {
+				alr->alarmRang = FALSE;
+
+				if (alr->alarmCount >= ll->numTransmissions){
+					stopAlarm();
+					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
+					connected = FALSE;
+					success = FALSE;
+				}
+				else{
+					setAlarm(ll->timeout);
+				}
+			}
+			if ((receiveFrame() != 0) && (receivedFrameType() == DISC)){
+				int sz = createSFrame(DISC);
+				sendFrame(sz);
+				resetAlarm();
+				
+				while(connected){ //Wait for UA
+					if ((receiveFrame() != 0) && (receivedFrameType() == UA)){
+						stopAlarm();
+						printf("Connection terminated\n");
+						connected = FALSE;
+						success = TRUE;
+					}
+					if (alr->alarmRang || alr->alarmCount == 0) {
+						alr->alarmRang = FALSE;
+
+						if (alr->alarmCount >= ll->numTransmissions){
+							stopAlarm();
+							printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
+							connected = FALSE;
+							success = FALSE;
+						}
+						else{
+							setAlarm(ll->timeout);
+						}
+					}
+				}
+			}
+		}
+	}
+	if (tcsetattr(al->fd, TCSANOW, &ll->oldtio) == -1){
+        perror("tcsetattr");
+        exit(-1);
+    }
+    close(al->fd);
+	free(ll);
+	free(al);
+	free(alr);
+	return success;
 }

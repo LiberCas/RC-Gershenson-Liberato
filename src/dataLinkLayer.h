@@ -66,11 +66,7 @@ int llopen(int door, LinkLayerRole role);
 // Return number of chars written, or "-1" on error.
 int llwrite(const unsigned char* buf, int length);
 
-
-// Close previously opened connection.
-// if showStatistics == TRUE, link layer should print statistics in the console on close.
-// Return "1" on success or "-1" on error.
-int llclose(int showStatistics);
+int llclose();
 
 int setPort(int door);
 int saveOldTio();

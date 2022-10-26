@@ -6,16 +6,6 @@ LinkLayer *ll;
 extern ApplicationLayer *al;
 extern Alarm *alr;
 
-int setPort(int door)
-{
-	char strDoor[3];
-	sprintf(strDoor, "%d", door);
-	char portPrelude[20] = "/dev/pts/";
-	strcat(portPrelude, strDoor);
-	strcpy(ll->port, portPrelude);
-	return 0;
-}
-
 int saveOldTio()
 {
 	if (tcgetattr(al->fd, &ll->oldtio) == -1)
@@ -26,10 +16,10 @@ int saveOldTio()
 	return 0;
 }
 
-int initLinkLayer(int door, LinkLayerRole role)
+int initLinkLayer(char* door, LinkLayerRole role)
 {
 	ll = (LinkLayer *)malloc(sizeof(LinkLayer));
-	setPort(door);
+	strcpy(ll->port, door);
 	ll->role = role;
 	ll->baudRate = BAUDRATE;
 	ll->sequenceNumber = 0;
@@ -309,7 +299,7 @@ int establishConnection()
 	return 1;
 }
 
-int llopen(int door, LinkLayerRole role)
+int llopen(char* door, LinkLayerRole role)
 {
 	initLinkLayer(door, role);
 	al->fd = open(ll->port, O_RDWR | O_NOCTTY);

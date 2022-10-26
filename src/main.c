@@ -19,7 +19,10 @@ int main(int argc, char** argv) {
         printf("Incorrect program usage\n");
         return 1;
     }
-    int port = atoi(argv[1]);
+    int sizeport = strlen(argv[1]);
+    char* port = malloc(sizeport+1);
+    memset(port, 0, sizeport+1);
+    memcpy(port, argv[1], sizeport);
     int roleint = atoi(argv[2]);
     if(roleint != TRANSMITTER && roleint != RECEIVER){
         printf("Invalid Role\n");

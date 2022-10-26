@@ -4,7 +4,7 @@
 
 ApplicationLayer* al;
 
-int sendreceiveFile(int port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout){
+int sendreceiveFile(char* port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout){
     initApplicationLayer(role, filename, baudRate, maxSendSize, nTries, timeout);
 
     int fail = llopen(port, role);

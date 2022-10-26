@@ -45,7 +45,7 @@ typedef enum {
 } FrameType;
 
 typedef struct {
-	char port[20]; /*Dispositivo /dev/ttySx, x = 0, 1*/
+	char port[40]; /*Dispositivo /dev/ttySx, x = 0, 1*/
 	LinkLayerRole role;
 	int baudRate; /*Velocidade de transmissão*/
 	unsigned int sequenceNumber; /*Número de sequência da trama: 0, 1*/
@@ -59,7 +59,7 @@ typedef struct {
 
 // Open a connection using the "port" parameters defined in struct linkLayer.
 // Return "1" on success or "-1" on error.
-int llopen(int door, LinkLayerRole role);
+int llopen(char* door, LinkLayerRole role);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
@@ -67,13 +67,12 @@ int llwrite(const unsigned char* buf, int length);
 
 int llclose();
 
-int setPort(int door);
 int saveOldTio();
 int setNewTio();
 int establishConnection();
 char getC(FrameType type);
 char getA(FrameType type, unsigned int analysingMessage);
-int initLinkLayer(int door, LinkLayerRole role);
+int initLinkLayer(char* door, LinkLayerRole role);
 int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();

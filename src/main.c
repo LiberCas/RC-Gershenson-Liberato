@@ -2,6 +2,7 @@
 // NOTE: This file must not be changed.
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "applicationLayer.h"
 
@@ -13,8 +14,22 @@
 //   $1: /dev/ttySxx
 //   $2: tx | rx
 //   $3: filename
-int main(int argc, char *argv[])
-{
-    mopen();
-    return 0;
+int main(int argc, char** argv) {
+    if(argc != 4){
+        printf("Incorrect program usage\n");
+        return 1;
+    }
+    int port = atoi(argv[1]);
+    int roleint = atoi(argv[2]);
+    if(roleint != TRANSMITTER && roleint != RECEIVER){
+        printf("Invalid Role\n");
+        return 1;
+    }
+    LinkLayerRole role = roleint;
+    char filename[MAX_FILE_NAME+1];
+    memset(filename, 0, MAX_FILE_NAME+1);
+    strcpy(filename, argv[3]);
+    printf("\nArguments: %d, %d, %s\n", port, role, filename);
+    int success = sendreceiveFile(port, role, filename, BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+	return success;
 }

@@ -1,9 +1,14 @@
 #ifndef _APPLICATION_LAYER_H_
 #define _APPLICATION_LAYER_H_
 
+#include "dataLinkLayer.h"
+
+#define MAX_FILE_NAME 64
+
 typedef struct  {
     int fd; /*Descritor correspondente à porta série*/
-    int status; /*TRANSMITTER | RECEIVER*/
+    LinkLayerRole role;
+    char filename[MAX_FILE_NAME+1];
 } ApplicationLayer;
 
 
@@ -15,9 +20,10 @@ typedef struct  {
 //   nTries: Maximum number of frame retries.
 //   timeout: Frame timeout.
 //   filename: Name of the file to send / receive.
-void applicationLayer(const char *serialPort, const char *role, int baudRate,
-                      int nTries, int timeout, const char *filename);
-
-int mopen();
+int sendreceiveFile(int port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout);
+int initApplicationLayer(LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout);
+int sendFileLoop();
+int receiveFileLoop();
+long int getFileSize(FILE* file);
 
 #endif // _APPLICATION_LAYER_H_

@@ -312,12 +312,11 @@ int establishConnection()
 int llopen(int door, LinkLayerRole role)
 {
 	initLinkLayer(door, role);
-	al = (ApplicationLayer *)malloc(sizeof(ApplicationLayer));
 	al->fd = open(ll->port, O_RDWR | O_NOCTTY);
 	if (al->fd < 0)
 	{
 		perror(ll->port);
-		exit(-1);
+		return 1;
 	}
 	saveOldTio();
 	setNewTio();
@@ -343,7 +342,7 @@ int llwrite(const unsigned char *buf, int length)
 			{
 				stopAlarm();
 				printf("ERROR: Maximum number of retries exceeded. Could not transfer file\n");
-				return 0;
+				return 1;
 			}
 
 			else
@@ -377,7 +376,7 @@ int llwrite(const unsigned char *buf, int length)
 		}
 	}
 	stopAlarm();
-	return 1;
+	return 0;
 }
 
 unsigned int createIFrame(const unsigned char *buf, int length)
@@ -464,7 +463,7 @@ unsigned int llread(unsigned char *message)
 		}
 	}
 	memcpy(message, ll->received_frame+4, receivedSize - I_FRAME_SIZE);
-	return (receivedSize);
+	return (receivedSize - I_FRAME_SIZE);
 }
 
 unsigned int analyzeReceivedFrame(const unsigned int sz)

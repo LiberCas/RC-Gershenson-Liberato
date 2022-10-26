@@ -32,8 +32,7 @@ typedef enum {
 
 #define COMMAND_FRAME_SIZE 5
 #define I_FRAME_SIZE 6
-#define MAX_UNSTUFFED_SIZE 129 
-#define MAX_SEND_SIZE 123 //MAX_UNSTUFFED_SIZE - Header(FLAG + A + C + BCC1) - Footer(BCC2 + FLAG)
+#define MAX_PACKAGE_SIZE 123 //MAX_UNSTUFFED_SIZE - Header(FLAG + A + C + BCC1) - Footer(BCC2 + FLAG)
 #define MAX_STUFFED_SIZE 256 //MAX_UNSTUFFED_SIZE - 2(Start and end flag, that can never be escaped)) * 2(Excepting the start and end flags all 
 // other chars may be stuffed, doubling their size) + 2(Putting the start and end flags back in = ((129 - 2)*2)+2 = (127*2) + 2 = 254 +2 = 256
 

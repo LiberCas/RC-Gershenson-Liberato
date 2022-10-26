@@ -57,31 +57,27 @@ int sendFileLoop(){
 	char fileSizeString[sizeof(int) * 3 + 2];
 	snprintf(fileSizeString, sizeof fileSizeString, "%d", fileSize);
 
-	/*
+    /*
 	if (!sendControlPackage(al->fd, CTRL_PKG_START, fileSizeString, al->filename))
 		return 0;
     */
-	char* fileBuf = malloc(MAX_SEND_SIZE+1);
-    memset(fileBuf, 0, MAX_SEND_SIZE+1);
+
+	char* fileBuf = malloc(MAX_DATA_SIZE+1);
+    memset(fileBuf, 0, MAX_DATA_SIZE+1);
     int fail = TRUE;
 
 	unsigned int readBytes = 0, writtenBytes = 0, i = 0;
-	while ((readBytes = fread(fileBuf, sizeof(char), MAX_SEND_SIZE, file)) > 0) {
+	while ((readBytes = fread(fileBuf, sizeof(char), MAX_DATA_SIZE, file)) > 0) {
         
-		/*if (!sendDataPackage(al->fd, (i++) % 255, fileBuf, readBytes)) {
+		if (sendDataPackage((i++) % 255, fileBuf, readBytes) != 0) {
 			free(fileBuf);
-			return 0;
-		}*/
-        fail = llwrite(fileBuf, readBytes);
-        if(fail == TRUE){
-            printf("ERROR: Unable to send file.\n");
-            free(fileBuf);
-            return 1;
-        }
-
-		fileBuf = memset(fileBuf, 0, MAX_SEND_SIZE+1);
+			return 1;
+		}
+        
+		memset(fileBuf, 0, MAX_DATA_SIZE+1);
 		writtenBytes += readBytes;
 	}
+
 
 	free(fileBuf);
 
@@ -95,6 +91,32 @@ int sendFileLoop(){
 		return 0;*/
 
 	printf("\nFile successfully transferred.\n");
+	return 0;
+}
+
+int sendDataPackage(int n, const char* buffer, int length) {
+	ControlFieldPackage c = C_DATA;
+	unsigned char l2 = length / 256;
+	unsigned char l1 = length % 256;
+
+	unsigned int packageSize = PACKAGING_SIZE + length;
+	unsigned char* package = (unsigned char*) malloc(packageSize+1);
+    memset(package, 0, packageSize+1);
+
+	package[0] = c;
+	package[1] = n;
+	package[2] = l2;
+	package[3] = l1;
+
+	memcpy(&package[PACKAGING_SIZE], buffer, length);
+    int fail = llwrite(package, packageSize);
+	if (fail != 0) {
+		printf("ERROR: Could not write data package.\n");
+		free(package);
+		return 1;
+	}
+
+	free(package);
 	return 0;
 }
 
@@ -115,7 +137,6 @@ int receiveFileLoop(){
 		return 0;
 	}*/
 
-	// create output file
 	FILE* outputFile = fopen(al->filename, "wb");
 	if (outputFile == NULL) {
 		printf("ERROR: Could not create output file.\n");
@@ -127,27 +148,27 @@ int receiveFileLoop(){
     /*
 	printf("Expected file size: %d (bytes)\n", fileSize);*/
     unsigned int size;
+    int fail = 0, N = -1;;
+    int lastN = N;
 	int fileSizeReadSoFar = 0;// N = -1;
-    char fileBuf[MAX_SEND_SIZE+1];
-	while (fileSizeReadSoFar != fileSize) {
-		//int lastN = N;
-
-        memset(fileBuf, 0, MAX_SEND_SIZE+1);
-
-        /*
-		if (!receiveDataPackage(al->fd, &N, &fileBuf, &length)) {
+    unsigned char* fileBuf = (unsigned char*) malloc(MAX_DATA_SIZE+1);
+    memset(fileBuf, 0, MAX_DATA_SIZE+1);
+    
+	while (fileSizeReadSoFar < fileSize) {
+		lastN = N;
+        
+        size = receiveDataPackage(&N, fileBuf);
+		if (size == -1) {
 			printf("ERROR: Could not receive data package.\n");
 			free(fileBuf);
-			return 0;
-		}*/
-        size = llread(fileBuf);
-        /*
+			return 1;
+		}
+        
 		if (N != 0 && lastN + 1 != N) {
-			printf("ERROR: Received sequence no. was %d instead of %d.\n", N,
-					lastN + 1);
+			printf("ERROR: Received sequence no. was %d instead of %d.\n", N, lastN + 1);
 			free(fileBuf);
-			return 0;
-		}*/
+			return 1;
+		}
 
 		fwrite(fileBuf, sizeof(char), size, outputFile);
 		fileSizeReadSoFar += size;
@@ -173,4 +194,33 @@ int receiveFileLoop(){
 
 	printf("File successfully received.\n");
 	return 0;
+}
+
+int receiveDataPackage(int* N, char* fileBuf){
+    unsigned char* package = (unsigned char*) malloc(MAX_PACKAGE_SIZE+1);
+    memset(package, 0, MAX_PACKAGE_SIZE+1);
+
+    int length =0;
+
+	unsigned int size = llread(package);
+	if (size <= 0) {
+		printf("ERROR: Could not read from link layer while receiving data package.\n");
+		return -1;
+	}
+
+	int C = package[0];
+	*N = (unsigned char) package[1];
+	int L2 = package[2];
+	int L1 = package[3];
+
+	if (C != C_DATA) {
+		printf("ERROR: Received package is not a data package (C = %d).\n", C);
+		return -1;
+	}
+
+	length = 256 * L2 + L1;
+	memcpy(fileBuf, &package[PACKAGING_SIZE], length);
+
+	free(package);
+	return length;
 }

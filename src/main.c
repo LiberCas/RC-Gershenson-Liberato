@@ -30,6 +30,6 @@ int main(int argc, char** argv) {
     memset(filename, 0, MAX_FILE_NAME+1);
     strcpy(filename, argv[3]);
     printf("\nArguments: %d, %d, %s\n", port, role, filename);
-    int success = sendreceiveFile(port, role, filename, BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+    int success = sendreceiveFile(port, role, filename, BAUDRATE, MAX_PACKAGE_SIZE, N_TRIES, TIMEOUT);
 	return success;
 }

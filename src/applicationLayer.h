@@ -4,6 +4,12 @@
 #include "dataLinkLayer.h"
 
 #define MAX_FILE_NAME 64
+#define MAX_DATA_SIZE 119
+#define PACKAGING_SIZE 4
+
+typedef enum {
+	C_DATA = 0x01, C_START = 0x02, C_END = 0x03
+} ControlFieldPackage;
 
 typedef struct  {
     int fd; /*Descritor correspondente à porta série*/
@@ -25,5 +31,6 @@ int initApplicationLayer(LinkLayerRole role, const char *filename, int baudRate,
 int sendFileLoop();
 int receiveFileLoop();
 long int getFileSize(FILE* file);
+int sendDataPackage(int n, const char* buffer, int length);
 
 #endif // _APPLICATION_LAYER_H_

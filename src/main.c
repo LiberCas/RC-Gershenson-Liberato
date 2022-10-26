@@ -7,14 +7,30 @@
 
 #define BAUDRATE 9600
 #define N_TRIES 3
-#define TIMEOUT 4
+#define TIMEOUT 3
 
 // Arguments:
-//   $1: /dev/ttySxx
-//   $2: tx | rx
-//   $3: filename
-int main(int argc, char *argv[])
-{
-    mopen();
-    return 0;
+//   $1: port number
+//   $2: role (T/R)
+//   $3: file name
+
+int main(int argc, char** argv) {
+    printf("2/3: \n");
+    unsigned char buf[3];
+    memset(buf, 0, 3);
+
+    fgets(buf, 2, stdin);
+
+    if (buf[0] == '2')
+    {
+        mopen(2, TRANSMITTER, "penguin.gif", BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+        //sendreceiveFile(2, TRANSMITTER, "penguin.gif", BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+    }
+
+    if (buf[0] == '3')
+    {
+        mopen(3, RECEIVER, "penguin.gif", BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+        //sendreceiveFile(3, RECEIVER, "penguin.gif", BAUDRATE, MAX_SEND_SIZE, N_TRIES, TIMEOUT);
+    }
+	return 0;
 }

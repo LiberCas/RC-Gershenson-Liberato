@@ -26,18 +26,16 @@ int saveOldTio()
 	return 0;
 }
 
-int initLinkLayer(int door, LinkLayerRole role)
+int initLinkLayer(int baudrate, int nRetries, int timeout)
 {
 	ll = (LinkLayer *)malloc(sizeof(LinkLayer));
-	setPort(door);
-	ll->role = role;
-	ll->baudRate = BAUDRATE;
+	ll->baudRate = baudrate;
 	ll->sequenceNumber = 0;
-	ll->timeout = 3;
-	ll->numTransmissions = 3;
+	ll->timeout = timeout;
+	ll->numTransmissions = nRetries;
 	memset(ll->sent_frame, 0, MAX_STUFFED_SIZE);
 	memset(ll->received_frame, 0, MAX_STUFFED_SIZE);
-	return 0;
+	return 1;
 }
 
 int setNewTio()
@@ -99,10 +97,10 @@ char getC(FrameType type)
 		c = C_UA;
 		break;
 	case RR:
-		c = C_RR;
+		c = C_RR0;
 		break;
 	case REJ:
-		c = C_REJ;
+		c = C_REJ0;
 		break;
 	}
 	// case I
@@ -117,7 +115,7 @@ int createSFrame(FrameType type)
 	frame[1] = getA(type, FALSE);
 	char c = getC(type);
 	frame[2] = c;
-	if (c == C_REJ || c == C_RR)
+	if (c == C_REJ0 || c == C_RR0)
 		frame[2] = frame[2] | (ll->sequenceNumber << 7); // Ns
 	frame[3] = (frame[1] ^ frame[2]);					 // BCC
 	frame[4] = FLAG;
@@ -222,7 +220,7 @@ FrameType receivedFrameType()
 	case C_UA:
 		t = UA;
 		break;
-	case C_RR:
+	case C_RR0:
 		t = RR;
 		break;
 	case C_RR1:
@@ -231,7 +229,7 @@ FrameType receivedFrameType()
 	case C_REJ1:
 		t = REJ;
 		break;
-	case C_REJ:
+	case C_REJ0:
 		t = REJ;
 		break;
 	case C_I0:
@@ -309,18 +307,14 @@ int establishConnection()
 	return 1;
 }
 
-int llopen(int door, LinkLayerRole role)
-{
-	initLinkLayer(door, role);
-	al = (ApplicationLayer *)malloc(sizeof(ApplicationLayer));
+int llopen(int door, LinkLayerRole role){
+	ll->role = role;
+	setPort(door);
 	al->fd = open(ll->port, O_RDWR | O_NOCTTY);
-	if (al->fd < 0)
-	{
+	if (al->fd < 0){
 		perror(ll->port);
 		exit(-1);
 	}
-	saveOldTio();
-	setNewTio();
 	int success = establishConnection();
 	if(success == 1){
 		return al->fd;
@@ -430,9 +424,11 @@ unsigned int llread(unsigned char *message)
 {
 	unsigned int transferring = TRUE;
 	int receivedSize;
+	printf("\n %s : %d : %d, %s", __FUNCTION__, __LINE__, RECEIVER, message);
 	while (transferring)
 	{
 		receivedSize = receiveFrame();
+		printf("\n %s : %d : %d, %s, %d", __FUNCTION__, __LINE__, RECEIVER, message, receivedSize);
 		if (receivedSize != 0)
 		{
 			if (receivedFrameType() == SET) //Getting old sets
@@ -443,12 +439,14 @@ unsigned int llread(unsigned char *message)
 			int sendSize = 0;
 			if (success == TRUE)
 			{
+				printf("\n %s : %d : %d, %s, %d, %d", __FUNCTION__, __LINE__, RECEIVER, message, receivedIFrameSN(), ll->sequenceNumber);
 				if (receivedIFrameSN() == ll->sequenceNumber)
 				{
 					sendSize = createSFrame(RR);
 				}
 				else
 				{
+					printf("\n %s : %d : %d, %s, %d", __FUNCTION__, __LINE__, RECEIVER, message, ll->sequenceNumber);
 					ll->sequenceNumber = receivedIFrameSN();
 					transferring = FALSE;
 					sendSize = createSFrame(RR);

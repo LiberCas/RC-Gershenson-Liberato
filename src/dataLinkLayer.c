@@ -26,7 +26,7 @@ int initLinkLayer(char* door, LinkLayerRole role)
 	ll->timeout = 3;
 	ll->numTransmissions = 3;
 	memset(ll->sent_frame, 0, MAX_STUFFED_SIZE);
-	memset(ll->received_frame, 0, MAX_STUFFED_SIZE);
+	memset(ll->received_frame, 0, MAX_UNSTUFFED_SIZE + FLAG_SIZE);
 	return 0;
 }
 
@@ -101,27 +101,26 @@ char getC(FrameType type)
 
 int createSFrame(FrameType type)
 {
-	unsigned char frame[COMMAND_FRAME_SIZE];
-	memset(frame, 0, COMMAND_FRAME_SIZE);
+	unsigned char frame[COMMAND_FRAME_SIZE-FLAG_SIZE +1];
+	memset(frame, 0, COMMAND_FRAME_SIZE-FLAG_SIZE +1);
 	frame[0] = FLAG;
-	frame[1] = getA(type, FALSE);
+	frame[0] = getA(type, FALSE);
 	char c = getC(type);
-	frame[2] = c;
+	frame[1] = c;
 	if (c == C_REJ || c == C_RR)
-		frame[2] = frame[2] | (ll->sequenceNumber << 7); // Ns
-	frame[3] = (frame[1] ^ frame[2]);					 // BCC
-	frame[4] = FLAG;
-	return stuff(frame, COMMAND_FRAME_SIZE);
+		frame[1] = frame[1] | (ll->sequenceNumber << 7); // Ns
+	frame[2] = (frame[0] ^ frame[1]);					 // BCC
+	return stuff(frame, COMMAND_FRAME_SIZE-FLAG_SIZE);
 }
 
 int stuff(unsigned char *frame, int sz)
 {
-	unsigned char stuffed[(sz * 2) - 2];
-	memset(stuffed, 0, (sz * 2) - 2);
-	unsigned int i = 1;
+	unsigned char stuffed[(sz * 2) + FLAG_SIZE];
+	memset(stuffed, 0, (sz * 2) + FLAG_SIZE);
+	unsigned int i = 0;
 	unsigned int j = 1;
 	stuffed[0] = FLAG;
-	while (i < (sz - 1))
+	while (i < sz)
 	{
 		if ((frame[i] == ESCAPE) || (frame[i] == FLAG))
 		{
@@ -154,7 +153,7 @@ int sendFrame(int size)
 int receiveFrame()
 { // Also does destuffing for memory efficiency
 	unsigned char temp[1] = {0};
-	memset(ll->received_frame, 0, MAX_STUFFED_SIZE);
+	memset(ll->received_frame, 0, MAX_UNSTUFFED_SIZE + FLAG_SIZE);
 	unsigned int i = 0;
 	unsigned int stop = FALSE;
 	unsigned int escaped = FALSE;
@@ -189,6 +188,7 @@ int receiveFrame()
 			}
 			else
 			{
+				escaped = TRUE;
 				continue;
 			}
 		}
@@ -248,7 +248,7 @@ int establishConnection()
 				{
 					stopAlarm();
 					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
-					return 0;
+					return 1;
 				}
 				else
 				{
@@ -263,7 +263,7 @@ int establishConnection()
 				connected = TRUE;
 				stopAlarm();
 				printf("Connection successfully established\n");
-				return 1;
+				return 0;
 			}
 		}
 	}
@@ -278,7 +278,7 @@ int establishConnection()
 				stopAlarm();
 				connected = TRUE;
 				printf("Connection successfully established\n");
-				return 1;
+				return 0;
 			}
 			if (alr->alarmRang || alr->alarmCount == 0) {
 				alr->alarmRang = FALSE;
@@ -287,7 +287,7 @@ int establishConnection()
 				{
 					stopAlarm();
 					printf("ERROR: Maximum number of retries exceeded. Connection aborted\n");
-					return 0;
+					return 1;
 				}
 				else
 				{
@@ -296,7 +296,7 @@ int establishConnection()
 			}
 		}
 	}
-	return 1;
+	return 0;
 }
 
 int llopen(char* door, LinkLayerRole role)
@@ -310,11 +310,11 @@ int llopen(char* door, LinkLayerRole role)
 	}
 	saveOldTio();
 	setNewTio();
-	int success = establishConnection();
-	if(success == 1){
+	int fail = establishConnection();
+	if(fail == 0){
 		return al->fd;
 	}
-	return 0;
+	return 1;
 }
 
 int llwrite(const unsigned char *buf, int length)
@@ -337,7 +337,7 @@ int llwrite(const unsigned char *buf, int length)
 
 			else
 			{
-				int sz;
+				int sz = 0;
 				if (newframe)
 				{
 					sz = createIFrame(buf, length);
@@ -379,20 +379,19 @@ unsigned int createIFrame(const unsigned char *buf, int length)
 	{
 		ll->sequenceNumber = 0;
 	}
-	unsigned char frame[length + I_FRAME_SIZE];
-	memset(frame, 0, length + I_FRAME_SIZE);
-	frame[0] = FLAG;
-	frame[1] = getA(I, FALSE);
-	frame[2] = (ll->sequenceNumber << 6); // Ns
-	frame[3] = (frame[1] ^ frame[2]);	  // BCC1
+	unsigned char frame[length + I_FRAME_SIZE - FLAG_SIZE];
+	memset(frame, 0, length + I_FRAME_SIZE - FLAG_SIZE);
+	int i0 = 0;
+	frame[i0++] = getA(I, FALSE);
+	frame[i0++] = (ll->sequenceNumber << 6); // Ns
+	frame[i0++] = (frame[0] ^ frame[1]);	  // BCC1
 	int i;
 	for (i = 0; i < length; i++)
 	{
-		frame[i + 4] = buf[i];
+		frame[i + i0] = buf[i];
 	}
-	frame[i + 4] = makeBCC2(buf, length);
-	frame[i + 5] = FLAG;
-	return stuff(frame, length + I_FRAME_SIZE);
+	frame[i + i0] = makeBCC2(buf, length);
+	return stuff(frame, length + I_FRAME_SIZE - FLAG_SIZE);
 }
 
 unsigned int receivedSFrameSN()
@@ -410,7 +409,7 @@ unsigned char makeBCC2(const unsigned char *buf, int size)
 	unsigned char bcc = '\0';
 	for (int i = 0; i < size; i++)
 	{
-		bcc == bcc ^ buf[i];
+		bcc = bcc ^ buf[i];
 	}
 	return bcc;
 }
@@ -478,7 +477,7 @@ unsigned int analyzeReceivedFrame(const unsigned int sz)
 	{ // BCC2 error
 		if (ll->received_frame[4] == FLAG)
 			return FALSE;
-		if (makeBCC2(ll->received_frame[4], sz - I_FRAME_SIZE) != ll->received_frame[sz - 2])
+		if (makeBCC2(&ll->received_frame[4], sz - I_FRAME_SIZE) != ll->received_frame[sz - 2])
 			return FALSE;
 	}
 	return TRUE;

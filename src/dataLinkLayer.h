@@ -32,9 +32,10 @@ typedef enum {
 
 #define COMMAND_FRAME_SIZE 5
 #define I_FRAME_SIZE 6
-#define MAX_PACKAGE_SIZE 123 //MAX_UNSTUFFED_SIZE - Header(FLAG + A + C + BCC1) - Footer(BCC2 + FLAG)
-#define MAX_STUFFED_SIZE 256 //MAX_UNSTUFFED_SIZE - 2(Start and end flag, that can never be escaped)) * 2(Excepting the start and end flags all 
-// other chars may be stuffed, doubling their size) + 2(Putting the start and end flags back in = ((129 - 2)*2)+2 = (127*2) + 2 = 254 +2 = 256
+#define FLAG_SIZE 2
+#define MAX_PACKAGE_SIZE 123 
+#define MAX_UNSTUFFED_SIZE 127
+#define MAX_STUFFED_SIZE 256
 
 typedef enum {
 	TRANSMITTER, RECEIVER
@@ -52,7 +53,7 @@ typedef struct {
 	unsigned int timeout; /*Valor do temporizador: 1 s*/
 	unsigned int numTransmissions; /*Número de tentativas em caso de falha*/
 	unsigned char sent_frame[MAX_STUFFED_SIZE]; /*Trama*/
-	unsigned char received_frame[MAX_STUFFED_SIZE];
+	unsigned char received_frame[MAX_UNSTUFFED_SIZE + FLAG_SIZE];
 	struct termios oldtio, newtio;
 } LinkLayer;
 

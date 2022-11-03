@@ -24,7 +24,7 @@ int initLinkLayer(char* door, LinkLayerRole role)
 	ll->baudRate = BAUDRATE;
 	ll->sequenceNumber = 0;
 	ll->timeout = 3;
-	ll->numTransmissions = 3;
+	ll->numTransmissions = 1;
 	memset(ll->sent_frame, 0, MAX_STUFFED_SIZE);
 	memset(ll->received_frame, 0, MAX_UNSTUFFED_SIZE + FLAG_SIZE);
 	return 0;
@@ -143,10 +143,9 @@ int sendFrame(int size)
 	int bytes = write(al->fd, ll->sent_frame, size);
 	if (bytes != size)
 	{
-		printf("Couldn't write command");
+		printf("WRITE ERROR");
 		return -1;
 	}
-	printf("%d bytes written. Awaiting receiver response\n", bytes);
 	return 0;
 }
 
@@ -322,6 +321,7 @@ int llwrite(const unsigned char *buf, int length)
 	unsigned int transferring = TRUE;
 	unsigned int newframe = TRUE;
 	resetAlarm();
+	int sz = 0;
 	while (transferring)
 	{
 		if (alr->alarmRang || alr->alarmCount == 0)
@@ -331,18 +331,21 @@ int llwrite(const unsigned char *buf, int length)
 			if (alr->alarmCount >= ll->numTransmissions)
 			{
 				stopAlarm();
-				printf("ERROR: Maximum number of retries exceeded. Could not transfer file\n");
+				printf("TIMEOUT ERROR\n");
 				return 1;
 			}
 
 			else
 			{
-				int sz = 0;
 				if (newframe)
 				{
 					sz = createIFrame(buf, length);
 					newframe = FALSE;
+                    printf("Sending new frame\n");
 				}
+                else{
+                    printf("Resending frame\n");
+                }
 				sendFrame(sz);
 				setAlarm(ll->timeout);
 			}
@@ -356,10 +359,11 @@ int llwrite(const unsigned char *buf, int length)
 					continue;
 				}
 				transferring = FALSE;
-				printf("Successfully sent frame\n");
+				printf("Received ACKNOWLEDGE, successfully sent frame\n");
 			}
 			else if (receivedFrameType() == REJ)
 			{
+                printf("Received REJECT, resending frame\n");
 				stopAlarm();
 				resetAlarm();
 			}
@@ -418,8 +422,27 @@ unsigned int llread(unsigned char *message)
 {
 	unsigned int transferring = TRUE;
 	int receivedSize;
+    resetAlarm();
+    setAlarm(ll->timeout);
 	while (transferring)
 	{
+
+        if (alr->alarmRang || alr->alarmCount == 0)
+		{
+			alr->alarmRang = FALSE;
+
+			if (alr->alarmCount >= ll->numTransmissions)
+			{
+				stopAlarm();
+				printf("TIMEOUT ERROR\n");
+				return 1;
+			}
+
+			else
+			{
+				setAlarm(ll->timeout);
+			}
+		}
 		receivedSize = receiveFrame();
 		if (receivedSize != 0)
 		{
@@ -431,6 +454,7 @@ unsigned int llread(unsigned char *message)
 			int sendSize = 0;
 			if (success == TRUE)
 			{
+                stopAlarm();
 				if (receivedIFrameSN() == ll->sequenceNumber)
 				{
 					sendSize = createSFrame(RR);
@@ -440,13 +464,13 @@ unsigned int llread(unsigned char *message)
 					ll->sequenceNumber = receivedIFrameSN();
 					transferring = FALSE;
 					sendSize = createSFrame(RR);
-					printf("Frame received\n");
+					printf("Frame received, sent ACKNOWLEDGE\n");
 				}
 			}
 			else
 			{
 				sendSize = createSFrame(REJ);
-				printf("Frame received with errors, awaiting resend\n");
+				printf("Errors in frame, sent REJECT\n");
 			}
 			sendFrame(sendSize);
 		}

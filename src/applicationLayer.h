@@ -30,8 +30,8 @@ typedef struct  {
 //  maxSendSize: Maximum bytes of file to send at once
 //  nTries: Maximum number of frame retries.
 //  timeout: Frame timeout.
-int sendReceiveFile(char *port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout);
-void initApplicationLayer(LinkLayerRole role, const char *filename);
+int sendreceiveFile(char *port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout);
+void initApplicationLayer(LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout);
 int sendFileLoop();
 int receiveFileLoop();
 long int getFileSize(FILE* file);

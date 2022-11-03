@@ -59,9 +59,8 @@ typedef struct {
 
 
 // Open a connection using the "port" parameters defined in struct linkLayer.
-// Parameters other than door and role to be used in possible future customizations.
 // Return "1" on success or "-1" on error.
-int llopen(char* door, LinkLayerRole role, int baudRate, int maxSendSize, int nTries, int timeout);
+int llopen(char* door, LinkLayerRole role);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
@@ -74,7 +73,7 @@ int setNewTio();
 int establishConnection();
 char getC(FrameType type);
 char getA(FrameType type, unsigned int analysingMessage);
-int initLinkLayer(char* door, LinkLayerRole role, int baudRate, int maxSendSize, int nTries, int timeout);
+int initLinkLayer(char* door, LinkLayerRole role);
 int createSFrame(FrameType type);
 int sendFrame(int size);
 int receiveFrame();

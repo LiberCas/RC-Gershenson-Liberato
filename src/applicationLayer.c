@@ -4,13 +4,12 @@
 
 ApplicationLayer *al;
 
-//main double-use function, for sending or receiving files
-int sendReceiveFile(char *port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout)
+int sendreceiveFile(char *port, LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout)
 {
-	initApplicationLayer(role, filename);
+	initApplicationLayer(role, filename, baudRate, maxSendSize, nTries, timeout);
 
-	int fail = llopen(port, role, baudRate, maxSendSize, nTries, timeout);
-	if (fail)
+	int fail = llopen(port, role);
+	if (fail == 1)
 	{
 		return 1;
 	}
@@ -18,11 +17,15 @@ int sendReceiveFile(char *port, LinkLayerRole role, const char *filename, int ba
 	{
 		fail = sendFileLoop();
 	}
-	else
+	else if (role == RECEIVER)
 	{
 		fail = receiveFileLoop();
 	}
-	if (fail)
+	else
+	{
+		return 1;
+	}
+	if (fail == 1)
 	{
 		return 1;
 	}
@@ -30,16 +33,24 @@ int sendReceiveFile(char *port, LinkLayerRole role, const char *filename, int ba
 	return (llclose());
 }
 
-//aplication layer initializer
-void initApplicationLayer(LinkLayerRole role, const char *filename)
-{
+void initApplicationLayer(LinkLayerRole role, const char *filename, int baudRate, int maxSendSize, int nTries, int timeout){
 	al = (ApplicationLayer *) malloc(sizeof(ApplicationLayer));
 	memset((char *)al, 0, sizeof(ApplicationLayer));
 	al->role = role;
 	memcpy(al->filename, filename, MAX_FILE_NAME);
 }
 
-//sending functions
+long int getFileSize(FILE *file) {
+	long int currentPosition = ftell(file);
+	if (fseek(file, 0, SEEK_END) == -1){
+		printf("ERROR: Could not get file size.\n");
+		return -1;
+	}
+	long int size = ftell(file);
+	fseek(file, 0, currentPosition);
+	return size;
+}
+
 int sendFileLoop()
 {
 	FILE *file = fopen(al->filename, "rb");
@@ -129,8 +140,7 @@ int sendControlPackage(ControlFieldPackage c, char *fileSizStr)
 	return 0;
 }
 
-int sendDataPackage(int n, const char *buffer, int length) 
-{
+int sendDataPackage(int n, const char *buffer, int length) {
 	ControlFieldPackage c = C_DATA;
 	unsigned char l2 = length / 256;
 	unsigned char l1 = length % 256;
@@ -157,20 +167,7 @@ int sendDataPackage(int n, const char *buffer, int length)
 	return 0;
 }
 
-long int getFileSize(FILE *file) {
-	long int currentPosition = ftell(file);
-	if (fseek(file, 0, SEEK_END) == -1){
-		printf("ERROR: Could not get file size.\n");
-		return -1;
-	}
-	long int size = ftell(file);
-	fseek(file, 0, currentPosition);
-	return size;
-}
-
-//receiving functions
-int receiveFileLoop()
-{
+int receiveFileLoop(){
 	int controlStart;
 	unsigned int fileSize;
 	char *fileName;

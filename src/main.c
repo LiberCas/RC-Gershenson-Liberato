@@ -15,8 +15,8 @@
 //   $2: filename (optional)
 //   $3: tx | rx (optional -> receiver is default)
 int main(int argc, char** argv) {
-    if(argc < 2 || argc > 5){
-        printf("Incorrect input, program usage:\nbin\\nserial port (filename) (role) (n_tries)");
+    if(argc < 2 || argc > 4){
+        printf("Incorrect program usage\n");
         return 1;
     }
     //Get port
@@ -25,30 +25,24 @@ int main(int argc, char** argv) {
     memset(port, 0, sizeport+1);
     memcpy(port, argv[1], sizeport);
     int roleint;
-    int nTries;
     char filename[MAX_FILE_NAME+1];
-
     memset(filename, 0, MAX_FILE_NAME+1);
-    strcpy(filename, argv[2]);
-
     if(argc < 4){
         roleint = RECEIVER;
-    } else {
+    }
+    if(argc > 2){
+        strcpy(filename, argv[2]);
+    }
+    if(argc == 4){
         roleint = atoi(argv[3]);
         if(roleint != TRANSMITTER && roleint != RECEIVER){
-            printf("Invalid arg 3: Role\n'1' -> Receiver\n'0' -> Transmiter");
+            printf("Invalid Role\n");
             free(port);
             return 1;
         }
     }
-    
-    if(argc > 4)
-        nTries = = atoi(argv[4]);
-    else
-        nTries = N_TRIES;
-    
     LinkLayerRole role = roleint;
-    int success = sendreceiveFile(port, role, filename, BAUDRATE, MAX_DATA_SIZE, nTries, TIMEOUT);
+    int success = sendreceiveFile(port, role, filename, BAUDRATE, MAX_DATA_SIZE, N_TRIES, TIMEOUT);
     free(port);
 	return success;
 }
